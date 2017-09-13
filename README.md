@@ -16,3 +16,5 @@ Please note that this package might upgrade the required RocksDB version at any 
 Vendoring is thus highly recommended if you require high stability.
 
 *The [embedded CockroachDB RocksDB](https://github.com/cockroachdb/c-rocksdb) is no longer supported in gorocksdb.*
+
+CGO_CFLAGS="-I/usr/local/include" CGO_LDFLAGS="-L/usr/local/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd" go install
