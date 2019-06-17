@@ -224,6 +224,16 @@ func OpenDbAsSecondaryColumnFamilies(
 	}, cfHandles, nil
 }
 
+func (db *DB) TryCatchUpWithPrimary() error {
+	var cErr *C.char
+	C.rocksdb_try_catch_up_with_primary(db.c, &cErr)
+	if cErr != nil {
+		defer C.free(unsafe.Pointer(cErr))
+		return errors.New(C.GoString(cErr))
+	}
+	return nil
+}
+
 // OpenDbForReadOnlyColumnFamilies opens a database with the specified column
 // families in read only mode.
 func OpenDbForReadOnlyColumnFamilies(
