@@ -42,6 +42,28 @@ func OpenDb(opts *Options, name string) (*DB, error) {
 	}, nil
 }
 
+// OpenDbAsSecondary opens a secondary database with the specified options.
+func OpenDbAsSecondary(opts *Options, name string, secondary string) (*DB, error) {
+	var (
+		cErr       *C.char
+		cName      = C.CString(name)
+		cSecondary = C.CString(secondary)
+	)
+	defer C.free(unsafe.Pointer(cName))
+	defer C.free(unsafe.Pointer(cSecondary))
+
+	db := C.rocksdb_open_as_secondary(opts.c, cName, cSecondary, &cErr)
+	if cErr != nil {
+		defer C.free(unsafe.Pointer(cErr))
+		return nil, errors.New(C.GoString(cErr))
+	}
+	return &DB{
+		name: name,
+		c:    db,
+		opts: opts,
+	}, nil
+}
+
 // OpenDbWithTTL opens a database with TTL support with the specified options.
 func OpenDbWithTTL(opts *Options, name string, ttl int) (*DB, error) {
 	var (
@@ -124,6 +146,69 @@ func OpenDbColumnFamilies(
 	)
 	if cErr != nil {
 		defer C.rocksdb_free(unsafe.Pointer(cErr))
+		return nil, nil, errors.New(C.GoString(cErr))
+	}
+
+	cfHandles := make([]*ColumnFamilyHandle, numColumnFamilies)
+	for i, c := range cHandles {
+		cfHandles[i] = NewNativeColumnFamilyHandle(c)
+	}
+
+	return &DB{
+		name: name,
+		c:    db,
+		opts: opts,
+	}, cfHandles, nil
+}
+
+// OpenDbAsSecondaryColumnFamilies opens a secondary database with the specified column families.
+func OpenDbAsSecondaryColumnFamilies(
+	opts *Options,
+	name string,
+	secondary string,
+	cfNames []string,
+	cfOpts []*Options,
+) (*DB, []*ColumnFamilyHandle, error) {
+	numColumnFamilies := len(cfNames)
+	if numColumnFamilies != len(cfOpts) {
+		return nil, nil, errors.New("must provide the same number of column family names and options")
+	}
+
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	cSecondary := C.CString(secondary)
+	defer C.free(unsafe.Pointer(cSecondary))
+
+	cNames := make([]*C.char, numColumnFamilies)
+	for i, s := range cfNames {
+		cNames[i] = C.CString(s)
+	}
+	defer func() {
+		for _, s := range cNames {
+			C.free(unsafe.Pointer(s))
+		}
+	}()
+
+	cOpts := make([]*C.rocksdb_options_t, numColumnFamilies)
+	for i, o := range cfOpts {
+		cOpts[i] = o.c
+	}
+
+	cHandles := make([]*C.rocksdb_column_family_handle_t, numColumnFamilies)
+
+	var cErr *C.char
+	db := C.rocksdb_open_as_secondary_column_families(
+		opts.c,
+		cName,
+		cSecondary,
+		C.int(numColumnFamilies),
+		&cNames[0],
+		&cOpts[0],
+		&cHandles[0],
+		&cErr,
+	)
+	if cErr != nil {
+		defer C.free(unsafe.Pointer(cErr))
 		return nil, nil, errors.New(C.GoString(cErr))
 	}
 
