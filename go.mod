@@ -1,4 +1,4 @@
-module github.com/wseternal/gorocksdb
+module github.com/allonmagen/gorocksdb
 
 go 1.13
 
