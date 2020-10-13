@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/pprof"
 	"sync"
 	"testing"
@@ -75,13 +76,19 @@ func TestCreateSstFile(t *testing.T) {
 	v, err := db.Get(NewDefaultReadOptions(), bufK)
 	fmt.Println(bufK, v.Data(), err)
 
+	st := time.Now()
+	runtime.GC()
+	fmt.Println(time.Now().Sub(st))
+
 	pprof.StopCPUProfile()
 	pprof.WriteHeapProfile(memProfile)
 	fmt.Println(pCpu)
 	fmt.Println(pMem)
 	fmt.Println(root)
 
-	//_ = os.RemoveAll(root)
+
+
+	_ = os.RemoveAll(root)
 }
 
 func getTmpPath() string {
